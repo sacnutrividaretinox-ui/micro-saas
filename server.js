@@ -1,69 +1,84 @@
+// server.js
 const express = require("express");
 const axios = require("axios");
-const cors = require("cors");
 const path = require("path");
+require("dotenv").config();
 
 const app = express();
-app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname, "public"))); // serve index.html
+app.use(express.static(path.join(__dirname))); // serve arquivos (como index.html)
 
-// 🔑 Credenciais Z-API (use variáveis de ambiente no Railway)
+// 🔑 Credenciais Z-API (configure no Railway em "Variables")
 const ZAPI = {
-  instanceId: process.env.INSTANCE_ID || "3E6DD0DEED00C0FD52197AE2AD17DA62",
-  token: process.env.TOKEN || "0BF08CF507E5ECC6C5937E55",
-  clientToken: process.env.CLIENT_TOKEN || "F79b1ca9735c54d5b997a92edbe62f596S"
+  instanceId: process.env.INSTANCE_ID,
+  token: process.env.TOKEN,
+  clientToken: process.env.CLIENT_TOKEN
 };
 
-// ✅ Rota para verificar status da instância
-app.get("/status", async (req, res) => {
-  try {
-    const url = `https://api.z-api.io/instances/${ZAPI.instanceId}/token/${ZAPI.token}`;
-    const response = await axios.get(url, {
-      headers: { "Client-Token": ZAPI.clientToken }
-    });
-    res.json(response.data);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
+// Rota principal -> carrega index.html
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "index.html"));
 });
 
-// ✅ Rota para enviar mensagem
+// ✅ Enviar mensagem única
 app.post("/send", async (req, res) => {
   try {
     const { phone, message } = req.body;
     const url = `https://api.z-api.io/instances/${ZAPI.instanceId}/token/${ZAPI.token}/send-text`;
-    const response = await axios.post(
-      url,
-      { phone, message },
-      { headers: { "Client-Token": ZAPI.clientToken } }
-    );
-    res.json(response.data);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
 
-// ✅ Rota para pegar QR Code (imagem base64)
-app.get("/whatsapp-qr", async (req, res) => {
-  try {
-    const url = `https://api.z-api.io/instances/${ZAPI.instanceId}/token/${ZAPI.token}/qr-code/image`;
-    const response = await axios.get(url, {
-      headers: { "Client-Token": ZAPI.clientToken }
+    const response = await axios.post(url, {
+      phone,
+      message
+    }, {
+      headers: {
+        "Client-Token": ZAPI.clientToken,
+        "Content-Type": "application/json"
+      }
     });
-    res.json(response.data);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+
+    res.json({ success: true, data: response.data });
+  } catch (err) {
+    console.error(err.response?.data || err.message);
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// Rota padrão para servir index.html
-app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "index.html"));
+// ✅ Enviar mensagens em massa
+app.post("/send-bulk", async (req, res) => {
+  try {
+    const { contacts, message } = req.body; 
+    // contacts deve ser um array de números de telefone
+
+    const results = [];
+
+    for (let phone of contacts) {
+      try {
+        const url = `https://api.z-api.io/instances/${ZAPI.instanceId}/token/${ZAPI.token}/send-text`;
+        const response = await axios.post(url, {
+          phone,
+          message
+        }, {
+          headers: {
+            "Client-Token": ZAPI.clientToken,
+            "Content-Type": "application/json"
+          }
+        });
+
+        results.push({ phone, status: "ok", data: response.data });
+      } catch (e) {
+        results.push({ phone, status: "error", error: e.response?.data || e.message });
+      }
+    }
+
+    res.json({ success: true, results });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, error: err.message });
+  }
 });
 
-// 🚀 Porta dinâmica (Railway fornece automaticamente)
+// 🚀 Porta dinâmica para Railway
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`🚀 Micro SaaS rodando na porta ${PORT}`);
+  console.log(`Servidor rodando na porta ${PORT}`);
 });
