@@ -1,31 +1,29 @@
-// Importa dependências
 const express = require("express");
 const path = require("path");
 
 const app = express();
 
-// Middleware para interpretar JSON
+// Middleware
 app.use(express.json());
 
-// Servir arquivos estáticos (index.html, css, js, etc)
-app.use(express.static(path.join(__dirname)));
+// Servir arquivos estáticos da pasta "public"
+app.use(express.static(path.join(__dirname, "public")));
 
-// Rota principal → abre o index.html
+// Rota principal -> abre o index.html
 app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "index.html"));
+  res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
-// Rota de teste para API
+// Rota de teste da API
 app.get("/api/status", (req, res) => {
   res.json({
     status: "ok",
-    message: "API funcionando corretamente ✅",
+    message: "API funcionando corretamente ✅"
   });
 });
 
-// Porta dinâmica do Railway (fallback para 3000 local)
+// Porta dinâmica do Railway
 const PORT = process.env.PORT || 3000;
-
 app.listen(PORT, () => {
   console.log(`🚀 Servidor rodando na porta ${PORT}`);
 });
