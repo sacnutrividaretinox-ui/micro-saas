@@ -1,47 +1,31 @@
+// Importa dependências
 const express = require("express");
-const axios = require("axios");
+const path = require("path");
 
 const app = express();
+
+// Middleware para interpretar JSON
 app.use(express.json());
 
-// Variáveis de ambiente (configure no Railway → "Variables")
-const INSTANCE_ID = process.env.INSTANCE_ID;
-const TOKEN = process.env.TOKEN;
-const CLIENT_TOKEN = process.env.CLIENT_TOKEN;
+// Servir arquivos estáticos (index.html, css, js, etc)
+app.use(express.static(path.join(__dirname)));
 
-// ✅ Rota inicial para teste
+// Rota principal → abre o index.html
 app.get("/", (req, res) => {
-  res.send("🚀 Micro-SaaS rodando no Railway!");
+  res.sendFile(path.join(__dirname, "index.html"));
 });
 
-// ✅ Rota para enviar mensagem pelo WhatsApp via Z-API
-app.post("/send", async (req, res) => {
-  try {
-    const { phone, message } = req.body;
-
-    const url = `https://api.z-api.io/instances/${INSTANCE_ID}/token/${TOKEN}/send-text`;
-
-    const response = await axios.post(
-      url,
-      { phone, message },
-      { headers: { "Client-Token": CLIENT_TOKEN } }
-    );
-
-    res.json({
-      success: true,
-      data: response.data,
-    });
-  } catch (error) {
-    console.error("Erro ao enviar mensagem:", error.message);
-    res.status(500).json({
-      success: false,
-      error: error.message,
-    });
-  }
+// Rota de teste para API
+app.get("/api/status", (req, res) => {
+  res.json({
+    status: "ok",
+    message: "API funcionando corretamente ✅",
+  });
 });
 
-// ✅ Configuração da porta dinâmica exigida pelo Railway
+// Porta dinâmica do Railway (fallback para 3000 local)
 const PORT = process.env.PORT || 3000;
+
 app.listen(PORT, () => {
   console.log(`🚀 Servidor rodando na porta ${PORT}`);
 });
